@@ -5,13 +5,15 @@ import sys
 import analyse
 import matplotlib.pyplot as plt
 import msvcrt
-from boxbeat import Pitch, Modes, Notes
+from boxbeat import Pitch, Modes, Notes, MidiControl
+from time import sleep
 
 
 # constants
 CHUNK_SIZE = 1024
 DURATION_THRESHOLD = 10
 RECORDING = False
+TIMESTEP = 44100.0 / CHUNK_SIZE
 
 # plot visualizations
 def VIS_temp_note(time, pitch):
@@ -75,7 +77,7 @@ if RECORDING:
 		# Show the volume and pitch
 		
 		DATA.loudness.append(analyse.loudness(samps))
-		DATA.pitch.append(Pitch(samps, mode = Modes.MAJOR, key = Notes.G))
+		DATA.pitch.append(Pitch(samps, mode = Modes.MINOR_PENTATONIC, key = Notes.C))
 		# loop quit, only windows
 		if msvcrt.kbhit():
 			chr = msvcrt.getch()
@@ -134,6 +136,7 @@ DATA.tones.append((len(DATA.pitch), None))
 next_data = DATA.tones[0]
 this_data = None
 last_none_time = 0		# time of the last none
+midi_player = MidiControl()
 for i in range(1, len(DATA.tones)):
 	# pick data
 	this_data = next_data
@@ -153,7 +156,16 @@ for i in range(1, len(DATA.tones)):
 		
 	# final decision
 	if KEEP:
+		print "play ", this_data[1] and this_data[1].tone,
 		VIS_note(*this_data)
+		# play the note if avail
+		if this_data[1] != None and this_data[1].tone != None:
+			midi_player.play(this_data[1].tone)	# replace the magic number with 44100 / CHUNK_SIZE
+			print '!',
+		print 
+	sleep(duration / TIMESTEP)
 
+
+		
 
 plt.show()
