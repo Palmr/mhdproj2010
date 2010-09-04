@@ -1,4 +1,6 @@
 import analyse
+import time
+import pygame.midi
 
 NOTE_NAMES = ("C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B")
 
@@ -41,10 +43,10 @@ class Modes:
 	MAJOR = [0,2,4,5,7,9,11,12]
 	HARMONIC_MINOR = [0,2,3,5,7,8,11,12]
 	MELODIC_MINOR = [0,2,3,5,7,9,11,12]
-	ACTION = [0,3,5,7,10,12]
-	JAZZ = [0,3,4,5,6,7,10,11,12]
-	
-	
+	MINOR_PENTATONIC = [0,3,5,7,10,12]
+	BLUES = [0,3,4,5,6,7,10,12]
+	BLUESPLUS = [0,3,4,5,6,7,10,11,12]
+
 	
 class Pitch(float):
 	"""
@@ -98,3 +100,16 @@ class Pitch(float):
 			return "%s%s" % (tone / 12, NOTE_NAMES[tone % 12])
 		else:
 			return ""
+			
+			
+class MidiControl:
+	def __init__(self):
+		pygame.midi.init()
+		self.outputStream = pygame.midi.Output(0)
+
+	def close(self):
+		self.outputStream.close()
+		pygame.midi.quit()
+
+	def play(self, pNote, pVelocity=100, pChannel=0):
+		self.outputStream.note_on(pNote, pVelocity, pChannel)
