@@ -102,19 +102,29 @@ for time, pitch in enumerate(DATA.pitch):
 
 # final note
 DATA.tones.append((len(DATA.pitch), None))
-next_note = DATA.tones[0]
-this_note = None
+next_data = DATA.tones[0]
+this_data = None
+last_none_time = 0		# time of the last none
 for i in range(1, len(DATA.tones)):
 	# pick data
-	this_note = next_note
-	next_note = DATA.tones[i]
+	this_data = next_data
+	next_data = DATA.tones[i]
 	
 	# measure duration
-	duration = next_note[0] - this_note[0] 
+	duration = next_data[0] - this_data[0] 
 	
+	KEEP = False
 	# filter
+	if next_data[1] == None or next_data[1].tone == None:
+		if (this_data[0] - last_none_time) > DURATION_THRESHOLD:
+			KEEP = True
+		last_none_time = this_data[0]
 	if duration > DURATION_THRESHOLD:
-		VIS_note(*this_note)
+		KEEP = True
+		
+	# final decision
+	if KEEP:
+		VIS_note(*this_data)
 
 
 
