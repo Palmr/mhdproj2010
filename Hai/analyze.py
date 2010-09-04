@@ -4,12 +4,16 @@ import wave
 import sys
 import analyse
 import matplotlib.pyplot as plt
-from boxbeat import Pitch
+import msvcrt
+from boxbeat import Pitch, Modes, Notes, MidiControl
+from time import sleep
 
 
 # constants
 CHUNK_SIZE = 1024
 DURATION_THRESHOLD = 10
+RECORDING = False
+TIMESTEP = 44100.0 / CHUNK_SIZE
 
 # plot visualizations
 def VIS_temp_note(time, pitch):
@@ -20,29 +24,9 @@ def VIS_loudness(loudness):
 	plt.plot(loudness)
 def VIS_pitch(pitch):
 	plt.plot(pitch, "ro")
-	
-	
-if len(sys.argv) < 2:
-	print "Plays a wave file.\n\n" +\
-		"Usage: %s filename.wav" % sys.argv[0]
-	sys.exit(-1)
 
-wf = wave.open(sys.argv[1], 'rb')
 
-p = pyaudio.PyAudio()
-
-# open stream
-stream = p.open(format =
-				pyaudio.paInt16,
-				#p.get_format_from_width(wf.getsampwidth()),
-				channels = wf.getnchannels(),
-				rate = wf.getframerate(),
-				output = True)
-
-# read data
-data = wf.readframes(CHUNK_SIZE)
-
-# output data
+# output data format
 class Data(object):
 	def __init__(self):
 		self.loudness = []
@@ -50,25 +34,72 @@ class Data(object):
 		self.tones = []
 
 DATA = Data()
+	
+# START	
+p = pyaudio.PyAudio()
+	
+if len(sys.argv) < 2:
+	RECORDING = True
+	# Open input stream, 16-bit mono at 44100 Hz
+	AUDIO_INPUT = p.open(
+		format = pyaudio.paInt16,
+		channels = 1,
+		rate = 44100,
+		input_device_index = 1,
+		input = True)
+else:
+	wf = wave.open(sys.argv[1], 'rb')
+
+	# open stream
+	AUDIO_OUTPUT = p.open(format =
+					pyaudio.paInt16,
+					#p.get_format_from_width(wf.getsampwidth()),
+					channels = wf.getnchannels(),
+					rate = wf.getframerate(),
+					output = True)
+				
+				# Initialize PyAudio
+
 
 #
 # STAGE 1
 #
 # Run analyse on input stream
 #
-while data != '':
-	samps = numpy.fromstring(data, dtype=numpy.int16)
-	pitch = Pitch(samps)
-	loudness = analyse.loudness(samps)
-	
-	DATA.loudness.append(loudness)
-	DATA.pitch.append(pitch)
-	
+if RECORDING:
+	print "Sing!"
+	chr = 0
+	while chr == 0:
+		# Read raw microphone data
+		rawsamps = AUDIO_INPUT.read(CHUNK_SIZE)
+		# Convert raw data to NumPy array
+		samps = numpy.fromstring(rawsamps, dtype=numpy.int16)
+		# Show the volume and pitch
+		
+		DATA.loudness.append(analyse.loudness(samps))
+		DATA.pitch.append(Pitch(samps, mode = Modes.MINOR_PENTATONIC, key = Notes.C))
+		# loop quit, only windows
+		if msvcrt.kbhit():
+			chr = msvcrt.getch()
+	AUDIO_INPUT.close()
+
+else:
+	# read data
 	data = wf.readframes(CHUNK_SIZE)
-	
+	while data != '':
+		samps = numpy.fromstring(data, dtype=numpy.int16)
+		pitch = Pitch(samps)
+		loudness = analyse.loudness(samps)
+		
+		DATA.loudness.append(loudness)
+		DATA.pitch.append(pitch)
+		
+		data = wf.readframes(CHUNK_SIZE)
+	AUDIO_OUTPUT.close()
+		
 	
 
-stream.close()
+
 p.terminate()
 
 VIS_loudness(DATA.loudness)
@@ -105,6 +136,7 @@ DATA.tones.append((len(DATA.pitch), None))
 next_data = DATA.tones[0]
 this_data = None
 last_none_time = 0		# time of the last none
+midi_player = MidiControl()
 for i in range(1, len(DATA.tones)):
 	# pick data
 	this_data = next_data
@@ -124,9 +156,16 @@ for i in range(1, len(DATA.tones)):
 		
 	# final decision
 	if KEEP:
+		print "play ", this_data[1] and this_data[1].tone,
 		VIS_note(*this_data)
+		# play the note if avail
+		if this_data[1] != None and this_data[1].tone != None:
+			midi_player.play(this_data[1].tone)	# replace the magic number with 44100 / CHUNK_SIZE
+			print '!',
+		print 
+	sleep(duration / TIMESTEP)
 
 
-
+		
 
 plt.show()
