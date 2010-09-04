@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import pypm
+import sys
 
 
 pypm.Initialize()
@@ -10,10 +11,13 @@ device = 2
 
 midiOut = pypm.Output(device, latency)
 
-pipe = open('/tmp/vimmidi.pipe','r')
+#pipe = open(sys.stdin,'r')
+pipe = sys.stdin
 
-while (pipe.readline()):
-   1
+#while (pipe.readline()):
+#   1
+
+midiOut.Write([[[0xC0,11],pypm.Time()]])
 
 def noteOn(note):
    midiOut.Write([[[0x90,note,100],pypm.Time()]])
@@ -31,7 +35,8 @@ def modRange(min, max, note):
 
 def chooseNote(row, col):
    #return modRange(27,108,chromatic(0, col))
-   return modRange(30, 128, modal([0,2,3,5,7,8,11],col-1))
+   return modRange(50, 128, modal([0,2,3,5,7,8,11],col-1))
+  # return 20+modRange(30, 128, modal([0,2,4,5,7,8,11],col-1))
 
 prevnote = -1
 
