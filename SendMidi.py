@@ -17,7 +17,13 @@ class SendMidi():
 				device = 1
 		
 		self.outputStream = pygame.midi.Output(device)
-
+		self.controlIdx = 0
+		ControllerManager().controls["midi"] = self.createController
+	
+	def createController(self):
+		self.controlIdx += 1
+		return MidiController(self, self.controlIdx)
+	
 	def close(self):
 		self.outputStream.close()
 		pygame.midi.quit()
@@ -72,8 +78,8 @@ class ControllerManager:
 			print k
 			
 		try:
-			return self.controls[raw_input("Choose controller: ")]
+			ctrl = self.controls[raw_input("Choose controller: ")]
+			return callable(ctrl) and ctrl() or ctrl
 		except:
 			print "Invalid controller"
 			return None
-
