@@ -4,6 +4,7 @@ import itertools
 import pygame
 from camera_opencv import Webcam
 from pygame.locals import *
+from marker import Marker
 
 class Concept():
 	def __init__(self, pSize=(640, 480)):
@@ -26,7 +27,7 @@ class Concept():
 		self.clock = pygame.time.Clock()
 
 		# Initialise camera
-		self.webcam = Webcam()
+		self.webcam = Webcam(pSize)
 
 		# Create a surface to capture to, same bit depth as window display surface
 		self.webcamStill = pygame.surface.Surface(pSize, 0, self.window)
@@ -92,7 +93,7 @@ class Concept():
 
 		return (centrePixelColour, threshold)
 
-	def main(self, pFlipX=False, pFlipY=False):
+	def main(self, pFlipX=True, pFlipY=False):
 		running = True
 
 		while running:
@@ -121,7 +122,8 @@ class Concept():
 					mousePos = pygame.mouse.get_pos()
 					matchTuple = self.get_colour_match(mousePos)
 					print matchTuple
-					self.markers.append([str(len(self.markers)), pygame.image.load("misc.png").convert_alpha(), matchTuple[0], matchTuple[1], mousePos, deque(list(itertools.repeat((0, 0), self.filterQueueSize)))])
+					self.markers.append(Marker(str(len(self.markers)), pygame.image.load("misc.png").convert_alpha(), matchTuple[0], matchTuple[1], mousePos, self.filterQueueSize))
+					#self.markers.append([str(len(self.markers)), pygame.image.load("misc.png").convert_alpha(), matchTuple[0], matchTuple[1], mousePos, deque(list(itertools.repeat((0, 0), self.filterQueueSize)))])
 
 			self.webcam.read(self.webcamStill)
 			if pFlipX or pFlipY:
@@ -130,36 +132,37 @@ class Concept():
 
 			# Find marker positions
 			for index, marker in enumerate(self.markers):
-				tmp_coord = self.get_colour_location(pColour=marker[2], pColourThreshold=marker[3])
+				tmp_coord = self.get_colour_location(pColour=marker.MatchColour, pColourThreshold=marker.MatchThreshold)
 				if tmp_coord != (None,None):
-					if marker[4] != (None,None):
-						marker[5].pop()
-						marker[5].appendleft(tmp_coord)
+					if marker.Position != (None,None):
+						marker.SmoothingList.pop()
+						marker.SmoothingList.appendleft(tmp_coord)
 						filteredX = 0
 						filteredY = 0
-						for point in marker[5]:
+						for point in marker.SmoothingList:
 							filteredX = filteredX + point[0]
 							filteredY = filteredY + point[1]
 						filtered = (filteredX/self.filterQueueSize, filteredY/self.filterQueueSize)
-						delta = sum( [(x-y)**2 for (x,y) in zip(tmp_coord, filtered)])#marker[4])])
+						delta = sum( [(x-y)**2 for (x,y) in zip(tmp_coord, filtered)])#marker.Position)])
 						if delta < self.jumpLimit:
-							marker[4] = filtered
+							marker.Position = filtered
 							print "filter jump"
 						else:
-							marker[4] = tmp_coord
+							marker.Position = tmp_coord
 
 						if self.midiOut:
 							for i in (0,1):
-								val = (127.0 / float(self.window.get_size()[i])) * float(marker[4][i])
-								self.midiSender.sendControlValue((index*2)+1+i, int(val))
+								val = (127.0 / float(self.window.get_size()[i])) * float(marker.Position[i])
+								#self.midiSender.sendControlValue((index*2)+1+i, int(val))
+								marker.MidiController.sendControlValue(int(val))
 					else:
-						marker[4] = tmp_coord
-					self.output.blit(marker[1], (marker[4][0]-8, marker[4][1]-8))
+						marker.Position = tmp_coord
+					self.output.blit(marker.Icon, (marker.Position[0]-8, marker.Position[1]-8))
 
 			# Output markers (To screen and to stdout)
 			if self.stdOut and len(self.markers) > 0:
 				for index, marker in enumerate(self.markers):
-					sys.stdout.write(marker[0]+'='+str(marker[4][0])+','+str(marker[4][1]))
+					sys.stdout.write(marker.Name+'='+str(marker.Position[0])+','+str(marker.Position[1]))
 					if index < len(self.markers)-1:
 						sys.stdout.write(';')
 				sys.stdout.write("\n")
@@ -171,7 +174,7 @@ class Concept():
 				self.output.blit(self.debugFont.render("Min Jump Distance: %d" % self.jumpLimit, 1, (10, 10, 10)), (0, 28))
 				self.output.blit(self.debugFont.render("Threshold Window Size: %d" % self.thresholdWindowSize, 1, (10, 10, 10)), (0, 42))
 				self.output.blit(self.debugFont.render("MIDI output: %s" % "ON" if self.midiOut else "OFF", 1, (10, 10, 10)), (0, 56))
-				self.output.blit(self.debugFont.render("Standard output: %s" % "ON" if self.stdOut else "OFF", 1, (10, 10, 10)), (0, 56))
+				self.output.blit(self.debugFont.render("Standard output: %s" % "ON" if self.stdOut else "OFF", 1, (10, 10, 10)), (0, 70))
 
 			self.window.blit(self.output, (0, 0))
 			pygame.display.flip()
