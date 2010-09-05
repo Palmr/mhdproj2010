@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import pypm
+from pygame import pypm
 
 import threading
 import Queue
