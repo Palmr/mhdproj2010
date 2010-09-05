@@ -2,7 +2,7 @@
 
 from collections import deque
 import itertools
-from SendMidi import ControllerManager
+from src.SendMidi import ControllerManager
 
 class Marker():
 	def __init__(self, pName, pIcon, pMatchColour, pMatchThreshold, pPosition, pFilterSize):
