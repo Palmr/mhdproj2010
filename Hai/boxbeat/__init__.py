@@ -29,8 +29,9 @@ def lazy_property(name):
 		return property(wrapped)
 	return proc
 
-def snap_note(value, values):
-	""" 0 and 12 must always be included at ends """
+	
+	
+def snap_to_values(value, values):
 	for i in range(len(values) - 1):
 		u = values[i + 1] 
 		if u > value:
@@ -86,7 +87,7 @@ class Pitch(float):
 			
 	@lazy_property("_note")
 	def note(self):
-		return self.tone and (snap_note((self.tone - self._key) % 12, self._mode) + self._key) % 12
+		return self.tone and (snap_to_values((self.tone - self._key) % 12, self._mode) + self._key) % 12
 			
 	def to_tone_string(self):
 		if self.tone:
@@ -106,10 +107,14 @@ class MidiControl:
 	def __init__(self):
 		pygame.midi.init()
 		self.outputStream = pygame.midi.Output(0)
-
+		
+	def set_instrument(self, inst, channel = 0):
+		self.outputStream.set_instrument(inst, channel)
+	
 	def close(self):
 		self.outputStream.close()
 		pygame.midi.quit()
 
-	def play(self, pNote, pVelocity=100, pChannel=0):
-		self.outputStream.note_on(pNote, pVelocity, pChannel)
+	def play(self, pNote, velocity=100, channel=0):
+		note = getattr(pNote, 'note', pNote)
+		self.outputStream.note_on(note, velocity, channel)

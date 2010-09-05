@@ -20,8 +20,8 @@ class SendMidi():
 		self.outputStream.note_on(pNote, pVelocity, pChannel)
 		
 midiControl = SendMidi()
-midiControl.sendNote(60, 160)
+midiControl.outputStream.set_instrument(115, channel = 0)
+midiControl.sendNote(60, 20)
 time.sleep(1)
-midiControl.sendNote(61, 160)
-time.sleep(1)
+
 midiControl.close()
