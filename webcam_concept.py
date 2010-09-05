@@ -14,7 +14,7 @@ class Concept():
 
 		# Midi sender
 		try:
-			import SendMidi
+			from src import SendMidi
 			self.midiSender = SendMidi and SendMidi.SendMidi()
 		except Exception, e:
 			print "MIDI Failed: " + str(e)

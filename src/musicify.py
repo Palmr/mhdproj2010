@@ -70,10 +70,6 @@ class Musicifier:
       (midi_in, midi_out) = self.PickDevices()
       self._RunInputThread(midi_in)
       self._RunOutputThread(midi_out)
-      self.thread_input.join()
-      print "Input thread quit"
-      self.thread_output.join()
-      print "Output thread quit"
 
 
    def Finish(self):
@@ -127,7 +123,7 @@ class Musicifier:
          return mode[num % len(mode)] + 12*( num / len(mode))
 
       while(not self.quitting):
-         print str(beat+1) + "." + str(tatum+1)
+        # print str(beat+1) + "." + str(tatum+1)
          time_to_sleep = secs_per_tatum
          empty = 0
 
@@ -207,7 +203,7 @@ class Musicifier:
 
          #if (tatum == 0):
          (key, mode_name,chord_type) = choon[choon_index%len(choon)]
-         print mode_name
+        # print mode_name
          mode = modes[mode_name]
 
          chord_choice = chords[chord_type]

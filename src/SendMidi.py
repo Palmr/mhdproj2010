@@ -1,4 +1,5 @@
 import pygame.midi
+import musicify
 
 pygame.midi.init()
 if not pygame.midi.get_count():
@@ -19,6 +20,9 @@ class SendMidi():
 		self.outputStream = pygame.midi.Output(device)
 		self.controlIdx = 0
 		ControllerManager().controls["midi"] = self.createController
+		self.musicify = musicify.Musicifier()
+		self.musicify.Run()
+		print ControllerManager().controls
 	
 	def createController(self):
 		self.controlIdx += 1
@@ -26,6 +30,7 @@ class SendMidi():
 	
 	def close(self):
 		self.outputStream.close()
+		self.musicify.Finish()
 		pygame.midi.quit()
 
 	def sendControlValue(self, pController, pValue):
