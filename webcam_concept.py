@@ -2,9 +2,8 @@ import sys
 from collections import deque
 import itertools
 import pygame
-import pygame.camera
+from camera_opencv import Webcam
 from pygame.locals import *
-import SendMidi
 
 class Concept():
 	def __init__(self, pSize=(640, 480)):
@@ -13,7 +12,12 @@ class Concept():
 		pygame.display.set_caption('Webcam Colour Tracking: ...Waiting for midi...')
 
 		# Midi sender
-		self.midiSender = SendMidi.SendMidi()
+		try:
+			import SendMidi
+			self.midiSender = SendMidi and SendMidi.SendMidi()
+		except Exception, e:
+			print "MIDI Failed: " + str(e)
+			self.midiSender = None
 		
 		# Update title
 		pygame.display.set_caption('Webcam Colour Tracking: ...Waiting for webcam...')
@@ -22,12 +26,7 @@ class Concept():
 		self.clock = pygame.time.Clock()
 
 		# Initialise camera
-		pygame.camera.init()
-		clist = pygame.camera.list_cameras()
-		if not clist:
-			raise ValueError("Sorry, no cameras detected.")
-		self.webcam = pygame.camera.Camera(clist[len(clist)-1], pSize) # Currently just choose the first camera
-		self.webcam.start()
+		self.webcam = Webcam()
 
 		# Create a surface to capture to, same bit depth as window display surface
 		self.webcamStill = pygame.surface.Surface(pSize, 0, self.window)
@@ -38,11 +37,15 @@ class Concept():
 		self.stdOut = False
 		self.minSize = 20
 		self.filterQueueSize = 20
-		self.midiOut = True
+		self.midiOut = bool(self.midiSender)
 		self.jumpLimit = 60
 		self.thresholdWindowSize = 20
-		pygame.font.init()
-		self.debugFont = pygame.font.Font(None, 12)
+		
+		try:
+			pygame.font.init()
+			self.debugFont = pygame.font.Font(None, 12)
+		except:
+			self.debugFont = None
 
 		# Load identifiers
 		self.markers = []
@@ -101,7 +104,8 @@ class Concept():
 				if e.type == QUIT or (e.type == KEYDOWN and e.key == K_ESCAPE):
 					# Exit cleanly
 					self.webcam.stop()
-					self.midiSender.close()
+					if self.midiSender:
+						self.midiSender.close()
 					running = False
 				elif (e.type == KEYDOWN and e.key == K_d):
 					self.debug = not self.debug
@@ -117,10 +121,9 @@ class Concept():
 					mousePos = pygame.mouse.get_pos()
 					matchTuple = self.get_colour_match(mousePos)
 					print matchTuple
-					name = raw_input("Enter tracking name: ")
-					self.markers.append([name, pygame.image.load("misc.png").convert_alpha(), matchTuple[0], matchTuple[1], mousePos, deque(list(itertools.repeat((0, 0), self.filterQueueSize)))])
+					self.markers.append([str(len(self.markers)), pygame.image.load("misc.png").convert_alpha(), matchTuple[0], matchTuple[1], mousePos, deque(list(itertools.repeat((0, 0), self.filterQueueSize)))])
 
-			self.webcamStill = self.webcam.get_image(self.webcamStill)
+			self.webcam.read(self.webcamStill)
 			if pFlipX or pFlipY:
 				self.webcamStill = pygame.transform.flip(self.webcamStill, pFlipX, pFlipY)
 			self.output = self.debug and self.webcamStill.copy() or self.webcamStill
@@ -146,8 +149,9 @@ class Concept():
 							marker[4] = tmp_coord
 
 						if self.midiOut:
-							val = (127.0 / float(self.window.get_size()[0])) * float(marker[4][0])
-							self.midiSender.sendControlValue(index+1, int(val))
+							for i in (0,1):
+								val = (127.0 / float(self.window.get_size()[i])) * float(marker[4][i])
+								self.midiSender.sendControlValue((index*2)+1+i, int(val))
 					else:
 						marker[4] = tmp_coord
 					self.output.blit(marker[1], (marker[4][0]-8, marker[4][1]-8))
@@ -161,7 +165,7 @@ class Concept():
 				sys.stdout.write("\n")
 
 			# Finally blit the output to the window
-			if self.debug:
+			if self.debug and self.debugFont:
 				self.output.blit(self.debugFont.render("Min Match Size: %d" % self.minSize, 1, (10, 10, 10)), (0, 0))
 				self.output.blit(self.debugFont.render("Filter Queue Size: %d" % self.filterQueueSize, 1, (10, 10, 10)), (0, 14))
 				self.output.blit(self.debugFont.render("Min Jump Distance: %d" % self.jumpLimit, 1, (10, 10, 10)), (0, 28))
