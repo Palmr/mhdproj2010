@@ -13,3 +13,4 @@ class Marker():
 		self.Position = pPosition
 		self.SmoothingList = deque(list(itertools.repeat((0, 0), pFilterSize)))
 		self.MidiController = ControllerManager().choose()
+		self.ControllerType = raw_input("Choose controller type [X, Y, XY, Button]: ")
