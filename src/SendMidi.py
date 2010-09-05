@@ -78,9 +78,11 @@ class MidiController:
 class ControllerManager:
 	def __init__(self):
 		self.controls = {}
+		print "INIT"
 	
 	def choose(self):
 		i = 0
+		print "Controllers: " + str(self.controls.keys())
 		for k,v in self.controls.iteritems():
 			print k
 			
