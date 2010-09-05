@@ -7,6 +7,18 @@ import Queue
 import time
 import signal
 import sys
+from SendMidi import ControllerManager
+
+class MusicifierController:
+   def __init__(self, musicifier, target):
+      self.musicifier = musicifier
+      self.target = target
+
+   def sendControlValue(self, value):
+      event = [[[0,self.target,value],pypm.Time()]]
+      print event
+      self.musicifier.AddMidiEvent(event)
+
 
 class Musicifier:
    def __init__(self):
@@ -17,6 +29,16 @@ class Musicifier:
       self.quitting = False
       self.queue = Queue.Queue()
       pypm.Initialize()
+      
+      ControllerManager().controls['pitch']            = MusicifierController(self, 2)
+      ControllerManager().controls['mode']             = MusicifierController(self, 3)
+      ControllerManager().controls['tempo']            = MusicifierController(self, 4)
+      ControllerManager().controls['chord_roll']       = MusicifierController(self, 5)
+      ControllerManager().controls['rest']             = MusicifierController(self, 46)
+      ControllerManager().controls['nirtous_oxide']    = MusicifierController(self, 23)
+      ControllerManager().controls['de_nitrous_oxide'] = MusicifierController(self, 33)
+      ControllerManager().controls['advance_choon']    = MusicifierController(self, 41)
+
 
    def PrintDevices(self,InOrOut):
        for loop in range(pypm.CountDevices()):
@@ -73,26 +95,26 @@ class Musicifier:
 
    def _OutputCallback(self, midi_out,foo):
 
-      tempo = 50.0
-      beats_per_bar = 4
-      tatums_per_beat = 4
-      secs_per_tatum = self._CalcSecsPerTatum(tempo, tatums_per_beat)
+      tempo             = 50.0
+      beats_per_bar     = 4
+      tatums_per_beat   = 4
+      secs_per_tatum    = self._CalcSecsPerTatum(tempo, tatums_per_beat)
 
-      max_chord_roll = 0.1
+      max_chord_roll    = 0.1
       chord_roll_amount = 0.01
 
-      notes = [] 
+      notes             = []
 
-      tatum = 0
-      beat = 0
-      bar = 0
-      base_note = 20
+      tatum             = 0
+      beat              = 0
+      bar               = 0
+      base_note         = 20
 
-      resting = 0
-      nitrous_oxide = False
-      de_nitrous_oxide = False
-      booster = 0
-      choon_index = 0
+      resting           = 0
+      nitrous_oxide     = False
+      de_nitrous_oxide  = False
+      booster           = 0
+      choon_index       = 0
 
       instrument = 3 # Piano 
       #instrument = 4 # Electric Piano 
@@ -121,14 +143,14 @@ class Musicifier:
                status_1     = event[0][0][2]
                
                controllers = dict( 
-                     pitch = 2,
-                     mode = 3,
-                     tempo = 4,
-                     chord_roll = 5,
-                     rest = 46,
-                     nitrous_oxide = 23,
+                     pitch            = 2,
+                     mode             = 3,
+                     tempo            = 4,
+                     chord_roll       = 5,
+                     rest             = 46,
+                     nitrous_oxide    = 23,
                      de_nitrous_oxide = 33,
-                     advance_choon = 41,
+                     advance_choon    = 41,
                )
                if ( target == controllers['pitch'] ):
                   base_note = (base_note+status_1/2)/2
