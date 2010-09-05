@@ -175,6 +175,9 @@ class Musicifier:
                if ( target == controllers['chord_roll']):
                   chord_roll_amount = max_chord_roll * status_1/127.0
 
+               # pass through
+               midi_out.Write(event);
+
                self.queue.task_done()
             except Queue.Empty:
                empty = 1
