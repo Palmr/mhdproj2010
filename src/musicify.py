@@ -15,10 +15,7 @@ class Musicifier:
       self.INPUT=0
       self.OUTPUT=1
       self.quitting = False
-
       self.queue = Queue.Queue()
-
-   def Setup(self):
       pypm.Initialize()
 
    def PrintDevices(self,InOrOut):
@@ -43,27 +40,43 @@ class Musicifier:
       midi_out = pypm.Output(self.device_out);
       return (midi_in, midi_out)
 
+   def AddMidiEvent(self, event):
+      self.queue.put(event)
+
+   def Run(self):
+      (midi_in, midi_out) = self.PickDevices()
+      self._RunInputThread(midi_in)
+      self._RunOutputThread(midi_out)
+      self.thread_input.join()
+      print "Input thread quit"
+      self.thread_output.join()
+      print "Output thread quit"
+
+
    def Finish(self):
       print "Stopping portmidi"
       pypm.Terminate()
       print "Signalling threads to quit"
       self.quitting = True
 
-   def InputCallback(self, midi_in,foo):
+   # PRIVATE METHODS
+
+   def _InputCallback(self, midi_in,foo):
       while(not self.quitting):
          while not midi_in.Poll(): pass
          event = midi_in.Read(1)
-         self.queue.put(event)
+         self.AddMidiEvent(event)
 
-   def CalcSecsPerTatum(self, tempo, tatums_per_beat ):
+
+   def _CalcSecsPerTatum(self, tempo, tatums_per_beat ):
       return (60.0/tempo)/tatums_per_beat
 
-   def OutputCallback(self, midi_out,foo):
+   def _OutputCallback(self, midi_out,foo):
 
       tempo = 50.0
       beats_per_bar = 4
       tatums_per_beat = 4
-      secs_per_tatum = self.CalcSecsPerTatum(tempo, tatums_per_beat)
+      secs_per_tatum = self._CalcSecsPerTatum(tempo, tatums_per_beat)
 
       max_chord_roll = 0.1
       chord_roll_amount = 0.01
@@ -81,7 +94,10 @@ class Musicifier:
       booster = 0
       choon_index = 0
 
-      instrument = 3 # EP ?
+      instrument = 3 # Piano 
+      #instrument = 4 # Electric Piano 
+      #instrument = 6 # Harpsichord
+
       midi_out.Write([[[0xC0,instrument,0],pypm.Time()]])
 
       def modal(mode, num):
@@ -122,7 +138,7 @@ class Musicifier:
 
                if ( target == controllers['tempo'] ):
                   tempo = status_1 + 30
-                  secs_per_tatum = CalcSecsPerTatum(tempo, tatums_per_beat)
+                  secs_per_tatum = self._CalcSecsPerTatum(tempo, tatums_per_beat)
 
                if ( target == controllers['rest'] ):
                   resting = (status_1 == 127)
@@ -206,28 +222,17 @@ class Musicifier:
             tatum = 0
             bar += 1
 
-   def RunInputThread(self, midi_in):
-      self.thread_input = threading.Thread(target=self.InputCallback, name="input thread", args=(midi_in,1))
+   def _RunInputThread(self, midi_in):
+      self.thread_input = threading.Thread(target=self._InputCallback, name="input thread", args=(midi_in,1))
       self.thread_input.start()
 
-   def RunOutputThread(self, midi_out):
-      self.thread_output = threading.Thread(target=self.OutputCallback, name="output thread", args=(midi_out,1))
+   def _RunOutputThread(self, midi_out):
+      self.thread_output = threading.Thread(target=self._OutputCallback, name="output thread", args=(midi_out,1))
       self.thread_output.start()
 
-
-
-   def Main(self):
-      self.Setup()
-      (midi_in, midi_out) = self.PickDevices()
-      self.RunInputThread(midi_in)
-      self.RunOutputThread(midi_out)
-      self.thread_input.join()
-      print "Input thread quit"
-      self.thread_output.join()
-      print "Output thread quit"
 
 
 
 
 musicifier = Musicifier()
-musicifier.Main()
+musicifier.Run()
