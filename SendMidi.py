@@ -23,9 +23,9 @@ class SendMidi():
 		pygame.midi.quit()
 
 	def sendControlValue(self, pController, pValue):
-		controlTuple = (((176, pController, pValue, 0), pygame.midi.time()))
-		self.outputStream.write(controlTuple)
+		controlTuple = controlTuple = [[[176, pController, pValue, 0], pygame.midi.time()]]
 		print "Sent: ",controlTuple
+		self.outputStream.write(controlTuple)
 
 	def sendNote(self, pNote, pVelocity=100, pChannel=0):
 		self.outputStream.note_on(pNote, pVelocity, pChannel)
