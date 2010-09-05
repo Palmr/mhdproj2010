@@ -20,9 +20,9 @@ class SendMidi():
 		self.controlIdx = 0
 		ControllerManager().controls["midi"] = self.createController
 		
-		import musicify
-		self.musicify = musicify.Musicifier()
-		self.musicify.Run()
+		# import musicify
+		# self.musicify = musicify.Musicifier()
+		# self.musicify.Run()
 		
 		print ControllerManager().controls
 	

@@ -41,6 +41,8 @@ class Concept():
 		self.midiOut = bool(self.midiSender)
 		self.jumpLimit = 60
 		self.thresholdWindowSize = 20
+		self.XLock = False
+		self.YLock = False
 		
 		try:
 			pygame.font.init()
@@ -114,6 +116,14 @@ class Concept():
 					self.stdOut = not self.stdOut
 				elif (e.type == KEYDOWN and e.key == K_f):
 					pFlipX = not pFlipX
+				elif (e.type == KEYDOWN and e.key == K_x):
+					self.XLock = True
+				elif (e.type == KEYUP and e.key == K_x):
+					self.XLock = False
+				elif (e.type == KEYDOWN and e.key == K_y):
+					self.YLock = True
+				elif (e.type == KEYUP and e.key == K_y):
+					self.YLock = False
 				elif (e.type == KEYDOWN and e.key == K_UP):
 					self.minSize = self.minSize + 1
 				elif (e.type == KEYDOWN and e.key == K_DOWN):
@@ -123,7 +133,6 @@ class Concept():
 					matchTuple = self.get_colour_match(mousePos)
 					print matchTuple
 					self.markers.append(Marker(str(len(self.markers)), pygame.image.load("misc.png").convert_alpha(), matchTuple[0], matchTuple[1], mousePos, self.filterQueueSize))
-					#self.markers.append([str(len(self.markers)), pygame.image.load("misc.png").convert_alpha(), matchTuple[0], matchTuple[1], mousePos, deque(list(itertools.repeat((0, 0), self.filterQueueSize)))])
 
 			self.webcam.read(self.webcamStill)
 			if pFlipX or pFlipY:
@@ -151,13 +160,37 @@ class Concept():
 							marker.Position = tmp_coord
 
 						if self.midiOut:
-							for i in (0,1):
-								val = (127.0 / float(self.window.get_size()[i])) * float(marker.Position[i])
-								#self.midiSender.sendControlValue((index*2)+1+i, int(val))
-								marker.MidiController.sendControlValue(int(val))
+							if marker.ControllerType == "XY":
+								for i in (0,1):
+									if self.XLock and i == 0:
+										val = (127.0 / float(self.window.get_size()[0])) * float(marker.Position[0])
+										self.midiSender.sendControlValue((index*2)+1+i, int(val))
+									elif self.YLock and i == 1:
+										val = (127.0 / float(self.window.get_size()[1])) * float(marker.Position[1])
+										self.midiSender.sendControlValue((index*2)+1+i, int(val))
+									elif not self.XLock and  not self.YLock:
+										val = (127.0 / float(self.window.get_size()[i])) * float(marker.Position[i])
+										self.midiSender.sendControlValue((index*2)+1+i, int(val))
+									#marker.MidiController.sendControlValue(int(val))
+							elif marker.ControllerType == "X":
+									val = (127.0 / float(self.window.get_size()[0])) * float(marker.Position[0])
+									#marker.MidiController.sendControlValue(int(val))
+									self.midiSender.sendControlValue((index*2)+1, int(val))
+							elif marker.ControllerType == "Y":
+									val = (127.0 / float(self.window.get_size()[1])) * float(marker.Position[1])
+									#marker.MidiController.sendControlValue(int(val))
+									self.midiSender.sendControlValue((index*2)+2, int(val))
+							elif marker.ControllerType.startswith("B"):
+									if not marker.OnScreen:
+										self.midiSender.sendControlValue((index*2)+1, 127)
+										marker.OnScreen = True
 					else:
 						marker.Position = tmp_coord
 					self.output.blit(marker.Icon, (marker.Position[0]-8, marker.Position[1]-8))
+				else:
+					if marker.OnScreen:
+						self.midiSender.sendControlValue((index*2)+1, 0)
+						marker.OnScreen = False
 
 			# Output markers (To screen and to stdout)
 			if self.stdOut and len(self.markers) > 0:
@@ -173,8 +206,10 @@ class Concept():
 				self.output.blit(self.debugFont.render("Filter Queue Size: %d" % self.filterQueueSize, 1, (10, 10, 10)), (0, 14))
 				self.output.blit(self.debugFont.render("Min Jump Distance: %d" % self.jumpLimit, 1, (10, 10, 10)), (0, 28))
 				self.output.blit(self.debugFont.render("Threshold Window Size: %d" % self.thresholdWindowSize, 1, (10, 10, 10)), (0, 42))
-				self.output.blit(self.debugFont.render("MIDI output: %s" % "ON" if self.midiOut else "OFF", 1, (10, 10, 10)), (0, 56))
-				self.output.blit(self.debugFont.render("Standard output: %s" % "ON" if self.stdOut else "OFF", 1, (10, 10, 10)), (0, 70))
+				self.output.blit(self.debugFont.render("MIDI output: %s" % ("ON" if self.midiOut else "OFF"), 1, (10, 10, 10)), (0, 56))
+				self.output.blit(self.debugFont.render("Standard output: %s" % ("ON" if self.stdOut else "OFF"), 1, (10, 10, 10)), (0, 70))
+				self.output.blit(self.debugFont.render("XLock: %s" % ("ON" if self.XLock else "OFF"), 1, (10, 10, 10)), (0, 84))
+				self.output.blit(self.debugFont.render("YLock: %s" % ("ON" if self.YLock else "OFF"), 1, (10, 10, 10)), (0, 98))
 
 			self.window.blit(self.output, (0, 0))
 			pygame.display.flip()
