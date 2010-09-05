@@ -1,8 +1,11 @@
 import pygame.midi
 
+pygame.midi.init()
+if not pygame.midi.get_count():
+	raise ImportError("Sorry, no MIDI devices found")
+
 class SendMidi():
 	def __init__(self):
-		pygame.midi.init()
 		self.outputStream = pygame.midi.Output(pygame.midi.get_count()-1)
 
 	def close(self):
