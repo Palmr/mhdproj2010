@@ -78,7 +78,11 @@ class Pitch(float):
 	@lazy_property("_tone")
 	def tone(self):	
 		value = int(round(self, 0))
-		return (value if value > 0 else None)
+		if value > 0:
+			tone_scaled = (value - self._key) % 12
+			return snap_to_values(tone_scaled, self._mode) + value - tone_scaled
+		else:
+			return None
 			
 			
 	@lazy_property("_octave")
@@ -87,7 +91,7 @@ class Pitch(float):
 			
 	@lazy_property("_note")
 	def note(self):
-		return self.tone and (snap_to_values((self.tone - self._key) % 12, self._mode) + self._key) % 12
+		return self.tone and self.tone % 12
 			
 	def to_tone_string(self):
 		if self.tone:
@@ -116,5 +120,6 @@ class MidiControl:
 		pygame.midi.quit()
 
 	def play(self, pNote, velocity=100, channel=0):
-		note = getattr(pNote, 'note', pNote)
-		self.outputStream.note_on(note, velocity, channel)
+		if pNote:
+			note = getattr(pNote, 'note', pNote)
+			self.outputStream.note_on(note, velocity, channel)

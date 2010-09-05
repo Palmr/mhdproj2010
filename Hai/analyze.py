@@ -175,7 +175,7 @@ for i in range(1, len(DATA.tones)):
 		KEEP = True
 	
 	# snap duration
-	duration = snap_to_values(duration, [0, 35 / 2.0, 35, 35 + 35 / 2.0, 70, 105, 140])
+	duration = snap_to_values(duration, [0, 35 / 4.0, 35 / 2.0, 35, 35 + 35 / 2.0, 70, 105, 140])
 	# final decision
 	if KEEP:	
 		VIS_note(*this_data)

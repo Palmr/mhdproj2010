@@ -34,12 +34,10 @@ def PrintDevices(InOrOut):
 
 def PickDevices():
    PrintDevices(INPUT)
-   #device_in = int(raw_input("Type input number: "))
-   device_in = 3
+   device_in = int(raw_input("Type input number: "))
    midi_in = pypm.Input(device_in);
    PrintDevices(OUTPUT)
-   #device_out = int(raw_input("Type output number: "))
-   device_out = 4
+   device_out = int(raw_input("Type output number: "))
    midi_out = pypm.Output(device_out);
    return (midi_in, midi_out)
 
