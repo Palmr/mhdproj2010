@@ -44,11 +44,11 @@ def printDevices(inOrOut):
 
 
 def singleton(cls):
-	instance = 0	
+	instance = []	
 	def getinstance(*args, **kwargs):
 		if not instance:
-			instance = cls(*args, **kwargs)
-		return instance
+			instance.append( cls(*args, **kwargs) )
+		return instance[0]
 	return getinstance
 
 
