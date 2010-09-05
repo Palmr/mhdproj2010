@@ -85,7 +85,7 @@ while True:
 	
 	# get vol and pitch
 	loudness = analyse.loudness(samps)
-	pitch = Pitch(samps, mode = Modes.MINOR_PENTATONIC, key = Notes.C)
+	pitch = Pitch(samps, mode = Modes.BLUES, key = Notes.C)
 	
 	# analyze pitch
 	if loudness > VOLUME_THRESHOLD:
@@ -106,7 +106,7 @@ while True:
 					F_stray = 0.0	
 			if last_played and tone and last_played == tone:
 				print "REPEAT", (time - last_played_time)
-				if (time - last_played_time) < 15:
+				if (time - last_played_time) < 22:
 
 					F_stray = 0.3
 				else:
