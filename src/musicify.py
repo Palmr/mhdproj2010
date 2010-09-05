@@ -254,8 +254,3 @@ class Musicifier:
       self.thread_output.start()
 
 
-
-
-
-musicifier = Musicifier()
-musicifier.Run()
