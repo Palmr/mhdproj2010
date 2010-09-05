@@ -1,0 +1,179 @@
+import sys
+from collections import deque
+import itertools
+import pygame
+import pygame.camera
+from pygame.locals import *
+import SendMidi
+
+class Concept():
+	def __init__(self, pSize=(640, 480)):
+		# Set up a pygame window display surface
+		self.window = pygame.display.set_mode(pSize, 0)
+		pygame.display.set_caption('Webcam Colour Tracking: ...Waiting for midi...')
+
+		# Midi sender
+		self.midiSender = SendMidi.SendMidi()
+		
+		# Update title
+		pygame.display.set_caption('Webcam Colour Tracking: ...Waiting for webcam...')
+
+		# Set up clock for FPS counting
+		self.clock = pygame.time.Clock()
+
+		# Initialise camera
+		pygame.camera.init()
+		clist = pygame.camera.list_cameras()
+		if not clist:
+			raise ValueError("Sorry, no cameras detected.")
+		self.webcam = pygame.camera.Camera(clist[len(clist)-1], pSize) # Currently just choose the first camera
+		self.webcam.start()
+
+		# Create a surface to capture to, same bit depth as window display surface
+		self.webcamStill = pygame.surface.Surface(pSize, 0, self.window)
+		self.output = pygame.surface.Surface(pSize, 0, self.window)
+
+		# Settings
+		self.debug = False
+		self.stdOut = False
+		self.minSize = 20
+		self.filterQueueSize = 20
+		self.midiOut = True
+		self.jumpLimit = 60
+		self.thresholdWindowSize = 20
+		pygame.font.init()
+		self.debugFont = pygame.font.Font(None, 12)
+
+		# Load identifiers
+		self.markers = []
+		# self.markers.append(["red", pygame.image.load ("red.png").convert_alpha(), (200, 50, 20), (80, 20, 15), (None, None)])
+		# self.markers.append(["green", pygame.image.load ("green.png").convert_alpha(), (30, 150, 30), (20, 80, 20), (None, None)])
+		# self.markers.append(["blue", pygame.image.load ("blue.png").convert_alpha(), (40, 40, 200), (20, 20, 80), (None, None)])
+		# self.markers.append(["laser", pygame.image.load ("laser.png").convert_alpha(), (180, 200, 180), (70, 70, 70), (None, None)])
+
+	def get_colour_location(self, pColour=(200, 50, 50), pColourThreshold=(80, 20, 20)):
+		# Threshold against the colour we got before
+		mask = pygame.mask.from_threshold(self.webcamStill, pColour, pColourThreshold)
+
+		if self.debug:
+			for m in mask.connected_components():
+				if m.count() > self.minSize:
+					pygame.draw.polygon(self.output, (255-pColour[0], 255-pColour[1], 255-pColour[2]), m.outline(10), 2)
+					for r in m.get_bounding_rects():
+						pygame.draw.rect(self.output, pColour, r, 1)
+
+		# Keep only the largest blob of that colour
+		connected = mask.connected_component()
+		if connected.count() > self.minSize:
+			return connected.centroid()
+		return (None,None)
+
+	def get_colour_match(self, pPosition):
+		centrePixelColour = self.webcamStill.get_at(pPosition)
+		
+		windowMin = list(centrePixelColour)
+		windowMax = list(centrePixelColour)
+
+		
+		for y in range(-self.thresholdWindowSize/2, self.thresholdWindowSize/2):
+			for x in range(-self.thresholdWindowSize/2, self.thresholdWindowSize/2):
+				# Should adjust if at edges to not go out of bounds
+				pixelColour = self.webcamStill.get_at((pPosition[0]+x, pPosition[1]+y))
+				for i in range(0, 3):
+					if pixelColour[i] < windowMin[i]:
+						windowMin[i] = pixelColour[i]
+					if pixelColour[i] > windowMax[i]:
+						windowMax[i] = pixelColour[i]
+
+		threshold = (windowMax[0]-windowMin[0], windowMax[1]-windowMin[1], windowMax[2]-windowMin[2])
+
+		return (centrePixelColour, threshold)
+
+	def main(self, pFlipX=False, pFlipY=False):
+		running = True
+
+		while running:
+			self.clock.tick()
+			pygame.display.set_caption('Webcam Colour Tracking: %d fps' % self.clock.get_fps())
+			
+			# Check for events
+			for e in pygame.event.get():
+				if e.type == QUIT or (e.type == KEYDOWN and e.key == K_ESCAPE):
+					# Exit cleanly
+					self.webcam.stop()
+					self.midiSender.close()
+					running = False
+				elif (e.type == KEYDOWN and e.key == K_d):
+					self.debug = not self.debug
+				elif (e.type == KEYDOWN and e.key == K_o):
+					self.stdOut = not self.stdOut
+				elif (e.type == KEYDOWN and e.key == K_f):
+					pFlipX = not pFlipX
+				elif (e.type == KEYDOWN and e.key == K_UP):
+					self.minSize = self.minSize + 1
+				elif (e.type == KEYDOWN and e.key == K_DOWN):
+					self.minSize = self.minSize - 1
+				elif (e.type == MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[0] == True):
+					mousePos = pygame.mouse.get_pos()
+					matchTuple = self.get_colour_match(mousePos)
+					print matchTuple
+					name = raw_input("Enter tracking name: ")
+					self.markers.append([name, pygame.image.load("misc.png").convert_alpha(), matchTuple[0], matchTuple[1], mousePos, deque(list(itertools.repeat((0, 0), self.filterQueueSize)))])
+
+			self.webcamStill = self.webcam.get_image(self.webcamStill)
+			if pFlipX or pFlipY:
+				self.webcamStill = pygame.transform.flip(self.webcamStill, pFlipX, pFlipY)
+			self.output = self.debug and self.webcamStill.copy() or self.webcamStill
+
+			# Find marker positions
+			for index, marker in enumerate(self.markers):
+				tmp_coord = self.get_colour_location(pColour=marker[2], pColourThreshold=marker[3])
+				if tmp_coord != (None,None):
+					if marker[4] != (None,None):
+						marker[5].pop()
+						marker[5].appendleft(tmp_coord)
+						filteredX = 0
+						filteredY = 0
+						for point in marker[5]:
+							filteredX = filteredX + point[0]
+							filteredY = filteredY + point[1]
+						filtered = (filteredX/self.filterQueueSize, filteredY/self.filterQueueSize)
+						delta = sum( [(x-y)**2 for (x,y) in zip(tmp_coord, filtered)])#marker[4])])
+						if delta < self.jumpLimit:
+							marker[4] = filtered
+							print "filter jump"
+						else:
+							marker[4] = tmp_coord
+
+						if self.midiOut:
+							val = (127.0 / float(self.window.get_size()[0])) * float(marker[4][0])
+							self.midiSender.sendControlValue(index+1, int(val))
+					else:
+						marker[4] = tmp_coord
+					self.output.blit(marker[1], (marker[4][0]-8, marker[4][1]-8))
+
+			# Output markers (To screen and to stdout)
+			if self.stdOut and len(self.markers) > 0:
+				for index, marker in enumerate(self.markers):
+					sys.stdout.write(marker[0]+'='+str(marker[4][0])+','+str(marker[4][1]))
+					if index < len(self.markers)-1:
+						sys.stdout.write(';')
+				sys.stdout.write("\n")
+
+			# Finally blit the output to the window
+			if self.debug:
+				self.output.blit(self.debugFont.render("Min Match Size: %d" % self.minSize, 1, (10, 10, 10)), (0, 0))
+				self.output.blit(self.debugFont.render("Filter Queue Size: %d" % self.filterQueueSize, 1, (10, 10, 10)), (0, 14))
+				self.output.blit(self.debugFont.render("Min Jump Distance: %d" % self.jumpLimit, 1, (10, 10, 10)), (0, 28))
+				self.output.blit(self.debugFont.render("Threshold Window Size: %d" % self.thresholdWindowSize, 1, (10, 10, 10)), (0, 42))
+				self.output.blit(self.debugFont.render("MIDI output: %s" % "ON" if self.midiOut else "OFF", 1, (10, 10, 10)), (0, 56))
+				self.output.blit(self.debugFont.render("Standard output: %s" % "ON" if self.stdOut else "OFF", 1, (10, 10, 10)), (0, 56))
+
+			self.window.blit(self.output, (0, 0))
+			pygame.display.flip()
+
+
+# Run Proof of Concept
+if __name__=='__main__':
+	con = Concept()
+	con.main()
