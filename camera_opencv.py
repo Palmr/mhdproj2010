@@ -17,4 +17,4 @@ class Webcam():
 		surfarray.blit_array(surface, self.get())
 	
 	def stop(self):
-		cv.ReleaseCapture(self.cp)
+		pass

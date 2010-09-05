@@ -7,7 +7,6 @@ import Queue
 import time
 import signal
 import sys
-import SendMidi
 from SendMidi import ControllerManager
 
 class MusicifierController:
