@@ -78,6 +78,9 @@ def OutputCallback(midi_out,foo):
    booster = 0
    choon_index = 0
 
+   instrument = 3 # EP ?
+   midi_out.Write([[[0xC0,instrument,0],pypm.Time()]])
+
    def modal(mode, num):
       return mode[num % len(mode)] + 12*( num / len(mode))
 
