@@ -5,15 +5,18 @@ import sys
 import analyse
 import matplotlib.pyplot as plt
 import msvcrt
-from boxbeat import Pitch, Modes, Notes, MidiControl
+from boxbeat import Pitch, Modes, Notes, MidiControl, snap_to_values
 from time import sleep
 
+
+midi_player = MidiControl()
 
 # constants
 CHUNK_SIZE = 1024
 DURATION_THRESHOLD = 10
 RECORDING = False
 TIMESTEP = 44100.0 / CHUNK_SIZE
+LAG = 10
 
 # plot visualizations
 def VIS_temp_note(time, pitch):
@@ -24,7 +27,9 @@ def VIS_loudness(loudness):
 	plt.plot(loudness)
 def VIS_pitch(pitch):
 	plt.plot(pitch, "ro")
-
+def VIS_beat(interval, max):
+	for x in range(0, max, interval):
+		plt.vlines(x + LAG, -20, 60)
 
 # output data format
 class Data(object):
@@ -40,13 +45,6 @@ p = pyaudio.PyAudio()
 	
 if len(sys.argv) < 2:
 	RECORDING = True
-	# Open input stream, 16-bit mono at 44100 Hz
-	AUDIO_INPUT = p.open(
-		format = pyaudio.paInt16,
-		channels = 1,
-		rate = 44100,
-		input_device_index = 1,
-		input = True)
 else:
 	wf = wave.open(sys.argv[1], 'rb')
 
@@ -61,14 +59,32 @@ else:
 				# Initialize PyAudio
 
 
+def countdown(secs):
+	while secs > 0:
+		print secs
+		sleep(1)
+		secs -= 1
+				
 #
 # STAGE 1
 #
 # Run analyse on input stream
 #
 if RECORDING:
+	midi_player.play(60 + Notes.C)
+	countdown(3)
 	print "Sing!"
+	
+	# Open input stream, 16-bit mono at 44100 Hz
+	AUDIO_INPUT = p.open(
+		format = pyaudio.paInt16,
+		channels = 1,
+		rate = 44100,
+		input_device_index = 1,
+		input = True)
+	
 	chr = 0
+	i = 0
 	while chr == 0:
 		# Read raw microphone data
 		rawsamps = AUDIO_INPUT.read(CHUNK_SIZE)
@@ -81,6 +97,11 @@ if RECORDING:
 		# loop quit, only windows
 		if msvcrt.kbhit():
 			chr = msvcrt.getch()
+		if  i <= 0:
+			midi_player.set_instrument(115, channel = 1) # clicky instrument
+			midi_player.play(60, 20, channel = 1)
+			i = 35
+		i -= 1
 	AUDIO_INPUT.close()
 
 else:
@@ -104,7 +125,7 @@ p.terminate()
 
 VIS_loudness(DATA.loudness)
 VIS_pitch(DATA.pitch)
-
+VIS_beat(35, len(DATA.pitch))
 
 #
 # STAGE TWO
@@ -136,14 +157,13 @@ DATA.tones.append((len(DATA.pitch), None))
 next_data = DATA.tones[0]
 this_data = None
 last_none_time = 0		# time of the last none
-midi_player = MidiControl()
 for i in range(1, len(DATA.tones)):
 	# pick data
 	this_data = next_data
 	next_data = DATA.tones[i]
 	
 	# measure duration
-	duration = next_data[0] - this_data[0] 
+	duration = next_data[0] - this_data[0]
 	
 	KEEP = False
 	# filter
@@ -153,16 +173,15 @@ for i in range(1, len(DATA.tones)):
 		last_none_time = this_data[0]
 	if duration > DURATION_THRESHOLD:
 		KEEP = True
-		
+	
+	# snap duration
+	duration = snap_to_values(duration, [0, 35 / 2.0, 35, 35 + 35 / 2.0, 70, 105, 140])
 	# final decision
-	if KEEP:
-		print "play ", this_data[1] and this_data[1].tone,
+	if KEEP:	
 		VIS_note(*this_data)
 		# play the note if avail
 		if this_data[1] != None and this_data[1].tone != None:
-			midi_player.play(this_data[1].tone)	# replace the magic number with 44100 / CHUNK_SIZE
-			print '!',
-		print 
+			midi_player.play(this_data[1].tone)	
 	sleep(duration / TIMESTEP)
 
 
