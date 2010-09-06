@@ -160,37 +160,12 @@ class Concept():
 							marker.Position = tmp_coord
 
 						if self.midiOut:
-							if marker.ControllerType == "XY":
-								for i in (0,1):
-									if self.XLock and i == 0:
-										val = (127.0 / float(self.window.get_size()[0])) * float(marker.Position[0])
-										self.midiSender.sendControlValue((index*2)+1+i, int(val))
-									elif self.YLock and i == 1:
-										val = (127.0 / float(self.window.get_size()[1])) * float(marker.Position[1])
-										self.midiSender.sendControlValue((index*2)+1+i, int(val))
-									elif not self.XLock and  not self.YLock:
-										val = (127.0 / float(self.window.get_size()[i])) * float(marker.Position[i])
-										self.midiSender.sendControlValue((index*2)+1+i, int(val))
-									#marker.MidiController.sendControlValue(int(val))
-							elif marker.ControllerType == "X":
-									val = (127.0 / float(self.window.get_size()[0])) * float(marker.Position[0])
-									#marker.MidiController.sendControlValue(int(val))
-									self.midiSender.sendControlValue((index*2)+1, int(val))
-							elif marker.ControllerType == "Y":
-									val = (127.0 / float(self.window.get_size()[1])) * float(marker.Position[1])
-									#marker.MidiController.sendControlValue(int(val))
-									self.midiSender.sendControlValue((index*2)+2, int(val))
-							elif marker.ControllerType.startswith("B"):
-									if not marker.OnScreen:
-										self.midiSender.sendControlValue((index*2)+1, 127)
-										marker.OnScreen = True
+							marker.send(self.window, self.XLock, self.YLock)
 					else:
 						marker.Position = tmp_coord
 					self.output.blit(marker.Icon, (marker.Position[0]-8, marker.Position[1]-8))
 				else:
-					if marker.OnScreen:
-						self.midiSender.sendControlValue((index*2)+1, 0)
-						marker.OnScreen = False
+					marker.offscreen()
 
 			# Output markers (To screen and to stdout)
 			if self.stdOut and len(self.markers) > 0:
