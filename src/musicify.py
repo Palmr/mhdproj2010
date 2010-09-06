@@ -15,8 +15,7 @@ class MusicifierController:
       self.target = target
 
    def sendControlValue(self, value):
-      event = [[[176,self.target,value],pypm.Time()]]
-      print event
+      event = [[[176,self.target,value,0],pypm.Time()]]
       self.musicifier.AddMidiEvent(event)
 
 
@@ -129,7 +128,6 @@ class Musicifier:
          for note in notes:
             midi_out.Write([[[0x90,note,0],pypm.Time()]]);
          while (not empty):
-            print "Q"
             try:
                event = self.queue.get_nowait()
                print "Got message: time ",event[0][1],", ",
